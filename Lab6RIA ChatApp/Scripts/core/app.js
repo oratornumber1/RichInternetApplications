@@ -18,7 +18,6 @@ var ChatService = (function () {
     function ChatService() {
         this.users = new Array();
         this.messages = new Array();
-        this.usersCounter = 1;
         this.chatHub = $.connection.chatHub;
         var self = this;
         this.chatHub.client.getAllUsers = function (users) {
@@ -34,7 +33,7 @@ var ChatService = (function () {
                 self.messages.push(new Message(message['UserIdFrom'], message['UserIdTo'], message['Text'], message['Time']));
             }
         };
-        $.connection.hub.start();
+        //$.connection.hub.start();
         $.connection.hub.start().done(function () {
             self.chatHub.server.getAllUsers();
         });
@@ -44,9 +43,10 @@ var ChatService = (function () {
     };
     ChatService.prototype.addNewUser = function (name) {
         //console.log(name);
-        this.users.push(new User(this.usersCounter, name));
-        this.chatHub.server.joinRoom(this.usersCounter, name);
-        this.usersCounter++;
+        var usersCounter = Math.floor(Math.random() * 6) + 1;
+        this.users.push(new User(usersCounter, name));
+        this.chatHub.server.joinRoom(usersCounter, name);
+        return usersCounter;
     };
     ChatService.prototype.getUserById = function (id) {
         for (var _i = 0, _a = this.users; _i < _a.length; _i++) {
@@ -55,6 +55,13 @@ var ChatService = (function () {
                 return user;
             }
         }
+    };
+    ChatService.prototype.getUserMessages = function (userIdFrom, userIdTo) {
+        var self = this;
+        $.connection.hub.start().done(function () {
+            self.chatHub.server.getUserMessages(userIdFrom, userIdTo);
+        });
+        return this.messages;
     };
     ChatService.prototype.sendMessage = function (userIdFrom, userIdTo, text) {
         this.messages.push(new Message(userIdFrom, userIdTo, text, ""));
@@ -68,21 +75,52 @@ var UsersController = (function () {
         this.$scope = $scope;
         this.users = this.myChatService.getAllUsers();
         this.showInput = true;
+        this.userIdFrom = 0;
+        this.userIdTo = 0;
         //this.$scope.$apply();
     }
     UsersController.prototype.addUser = function (name) {
-        this.myChatService.addNewUser(name);
+        this.userIdFrom = this.myChatService.addNewUser(name);
         this.users = this.myChatService.getAllUsers();
         this.showInput = false;
         //this.$scope.$apply();
     };
-    UsersController.prototype.setCurrentUserId = function (id) {
-        this.currentUserId = id;
+    UsersController.prototype.setUserIdTo = function (id) {
+        this.userIdTo = id;
     };
     return UsersController;
 }());
 UsersController.$inject = ['ChatService', '$scope'];
+var DialogController = (function () {
+    function DialogController(myChatService, $scope) {
+        this.myChatService = myChatService;
+        this.$scope = $scope;
+        this.messages = new Array();
+    }
+    DialogController.prototype.$onChanges = function (obj) {
+        console.log(obj.userIdFrom);
+        console.log(obj.userIdTo);
+        this.userIdFrom = obj.userIdFrom.currentValue;
+        this.userIdTo = obj.userIdTo.currentValue;
+        this.messages = this.myChatService.getUserMessages(this.userIdFrom, this.userIdTo);
+    };
+    DialogController.prototype.sendMessage = function (text) {
+        this.myChatService.sendMessage(this.userIdFrom, this.userIdTo, text);
+        this.messages = this.myChatService.getUserMessages(this.userIdFrom, this.userIdTo);
+    };
+    return DialogController;
+}());
+DialogController.$inject = ['ChatService', '$scope'];
 var chatApp = angular.module('chatApp', []);
 chatApp.service("ChatService", ChatService);
 chatApp.controller("UsersController", UsersController);
-//# sourceMappingURL=app.js.map
+chatApp.controller("DialogController", DialogController);
+chatApp.component('dialog', {
+    bindings: {
+        userIdFrom: '<',
+        userIdTo: '<'
+    },
+    controller: DialogController,
+    templateUrl: '../../DialogTemplate.html',
+    controllerAs: 'ctrlDialog'
+});

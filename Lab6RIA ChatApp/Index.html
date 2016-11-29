@@ -11,18 +11,18 @@
             <h2>Пользователи</h2>
             <div class="list-group">
                 <div class="list-group-item" ng-repeat="user in usersctrl.users">
-                    <a ng-click="usersctrl.setCurrentNoteId(user.id)">{{user.name}}</a>
+                    <a ng-click="usersctrl.setUserIdTo(user.id)">{{user.name}}</a>
                 </div>
                 <div class="list-group-item text-center" ng-show="usersctrl.showInput">
-                    <input ng-model="title" type="text" class="form-control" placeholder="Ваше имя">
+                    <input ng-model="name" type="text" class="form-control" placeholder="Ваше имя">
                     <br />
-                    <a class="btn btn-success" ng-click="usersctrl.addUser(title)">Присоединиться к чату</a>
+                    <a class="btn btn-success" ng-click="usersctrl.addUser(name)">Присоединиться к чату</a>
                 </div>
             </div>
         </div>
 
-        <!--<page current-note-id="notectrl.currentNoteId">
-        </page>-->
+        <dialog user-id-from="usersctrl.userIdFrom" user-id-to="usersctrl.userIdTo">
+        </dialog>
 
     </div>
 

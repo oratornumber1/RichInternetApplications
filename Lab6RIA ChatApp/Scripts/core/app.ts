@@ -31,7 +31,6 @@ class ChatService {
     constructor() {
         this.users = new Array<User>();
         this.messages = new Array<Message>();
-        this.usersCounter = 1;
         this.chatHub = $.connection.chatHub;
 
         let self = this;
@@ -51,7 +50,7 @@ class ChatService {
         };
 
         
-        $.connection.hub.start();
+        //$.connection.hub.start();
         $.connection.hub.start().done(function () {
             self.chatHub.server.getAllUsers();
         });      
@@ -62,11 +61,12 @@ class ChatService {
         return this.users;
     }
 
-    public addNewUser(name: string) {
+    public addNewUser(name: string): number {
         //console.log(name);
-        this.users.push(new User(this.usersCounter,name));
-        this.chatHub.server.joinRoom(this.usersCounter,name);
-        this.usersCounter++;
+        let usersCounter = Math.floor(Math.random() * 6) + 1;
+        this.users.push(new User(usersCounter,name));
+        this.chatHub.server.joinRoom(usersCounter,name);
+        return usersCounter;
     }
 
     public getUserById(id: number): User {
@@ -75,6 +75,15 @@ class ChatService {
                 return user;
             }
         }
+    }
+
+    public getUserMessages(userIdFrom: number, userIdTo: number): Array<Message> {
+        let self = this;
+        $.connection.hub.start().done(function () {
+            self.chatHub.server.getUserMessages(userIdFrom, userIdTo);
+        }); 
+        
+        return this.messages;
     }
 
     public sendMessage(userIdFrom: number, userIdTo: number, text: string) {
@@ -86,29 +95,68 @@ class ChatService {
 
 class UsersController {
     users: Array<User>;
-    currentUserId: number;
+    userIdTo: number;
+    userIdFrom: number;
     showInput: boolean;
 
     constructor(private myChatService: ChatService, private $scope: ng.IScope) {
         this.users = this.myChatService.getAllUsers();
         this.showInput = true;
+        this.userIdFrom = 0;
+        this.userIdTo = 0;
         //this.$scope.$apply();
     }
 
     addUser(name: string) {
-        this.myChatService.addNewUser(name);
+        this.userIdFrom = this.myChatService.addNewUser(name);
         this.users = this.myChatService.getAllUsers();
         this.showInput = false;
         //this.$scope.$apply();
     }
 
-    setCurrentUserId(id: number) {
-        this.currentUserId = id;
+    setUserIdTo(id: number) {
+        this.userIdTo = id;
     }
 }
 UsersController.$inject = ['ChatService', '$scope'];
 
+class DialogController {
+    messages: Array<Message>;
+    userIdTo: number;
+    userIdFrom: number;
+
+    constructor(private myChatService: ChatService, private $scope: ng.IScope) {
+        this.messages = new Array<Message>();
+    }
+
+    $onChanges(obj: any) {
+        console.log(obj.userIdFrom);
+        console.log(obj.userIdTo);
+        this.userIdFrom = obj.userIdFrom.currentValue;
+        this.userIdTo = obj.userIdTo.currentValue;
+        this.messages = this.myChatService.getUserMessages(this.userIdFrom, this.userIdTo);
+    }
+
+    sendMessage(text: string)
+    {
+        this.myChatService.sendMessage(this.userIdFrom, this.userIdTo, text);
+        this.messages = this.myChatService.getUserMessages(this.userIdFrom, this.userIdTo);
+    }
+}
+DialogController.$inject = ['ChatService', '$scope'];
 
 var chatApp = angular.module('chatApp', []);
 chatApp.service("ChatService", ChatService);
 chatApp.controller("UsersController", UsersController);
+chatApp.controller("DialogController", DialogController);
+
+chatApp.component('dialog', {
+    bindings: {
+        userIdFrom: '<',
+        userIdTo: '<'
+    },
+    controller: DialogController,
+    templateUrl: '../../DialogTemplate.html',
+    controllerAs: 'ctrlDialog'
+
+});

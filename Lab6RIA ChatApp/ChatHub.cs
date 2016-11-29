@@ -36,10 +36,11 @@ namespace Lab6RIA_ChatApp
             Clients.Group(userIdTo.ToString()).sendMessage(message);
         }
 
-        public void GetUserMessages()
+        public void GetUserMessages(int userIdFrom, int userIdTo)
         {
-            var user = _users.FirstOrDefault(u => u.ConnectionId == Context.ConnectionId);
-            Clients.Caller().getUserMessages(_messages.Where(m => m.UserIdFrom == user.Id || m.UserIdTo == user.Id).ToList());
+            //var user = _users.FirstOrDefault(u => u.ConnectionId == Context.ConnectionId);
+            var list = _messages.Where(m => (m.UserIdFrom == userIdFrom && m.UserIdTo == userIdTo) || (m.UserIdFrom == userIdTo && m.UserIdTo == userIdFrom)).ToList();
+            Clients.Caller.getUserMessages(list);
         }
     }
 }
