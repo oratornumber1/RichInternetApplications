@@ -1,0 +1,38 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <meta charset="utf-8" />
+    <link href="Content/bootstrap.css" rel="stylesheet" />
+</head>
+<body>
+    <div style="padding:20px;" class="row" ng-app="chatApp" ng-controller="UsersController as usersctrl">
+        <div class="col-md-4 text-center">
+            <h2>Пользователи</h2>
+            <div class="list-group">
+                <div class="list-group-item" ng-repeat="user in usersctrl.users">
+                    <a ng-click="usersctrl.setCurrentNoteId(user.id)">{{user.name}}</a>
+                </div>
+                <div class="list-group-item text-center" ng-show="usersctrl.showInput">
+                    <input ng-model="title" type="text" class="form-control">
+                    <br />
+                    <a class="btn btn-success" ng-click="usersctrl.addUser(title)">Добавить</a>
+                </div>
+            </div>
+        </div>
+
+        <!--<page current-note-id="notectrl.currentNoteId">
+        </page>-->
+
+    </div>
+
+
+    <script src="Scripts/jquery-3.1.1.js"></script>
+    <script src="Scripts/bootstrap.js"></script>
+    <script src="Scripts/angular.min.js"></script>
+    <script src="Scripts/jquery.signalR-2.2.1.js"></script>
+    <script src="signalr/hubs"></script>
+    <script src="Scripts/core/app.js"></script>
+
+</body>
+</html>
