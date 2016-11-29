@@ -14,9 +14,9 @@
                     <a ng-click="usersctrl.setCurrentNoteId(user.id)">{{user.name}}</a>
                 </div>
                 <div class="list-group-item text-center" ng-show="usersctrl.showInput">
-                    <input ng-model="title" type="text" class="form-control">
+                    <input ng-model="title" type="text" class="form-control" placeholder="Ваше имя">
                     <br />
-                    <a class="btn btn-success" ng-click="usersctrl.addUser(title)">Добавить</a>
+                    <a class="btn btn-success" ng-click="usersctrl.addUser(title)">Присоединиться к чату</a>
                 </div>
             </div>
         </div>

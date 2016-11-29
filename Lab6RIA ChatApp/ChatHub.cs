@@ -10,10 +10,11 @@ namespace Lab6RIA_ChatApp
     public class ChatHub : Hub
     {
         public static List<User> _users = new List<User>();
+        public static List<Message> _messages = new List<Message>();
         
         public void JoinRoom(int id, string name)
         {
-            _users.Add(new User { Id = id, Name = name });
+            _users.Add(new User { Id = id, Name = name, ConnectionId = Context.ConnectionId });
             Groups.Add(Context.ConnectionId, id.ToString());
         }
 
@@ -28,16 +29,17 @@ namespace Lab6RIA_ChatApp
             Clients.All.getAllUsers(_users);
         }
 
-        public void SendMessage(int userId, string message)
+        public void SendMessage(int userIdFrom, int userIdTo, string text)
         {
-            Clients.Group(userId.ToString()).addChatMessage(message);
+            var message = new Message { UserIdFrom = userIdFrom, UserIdTo = userIdTo, Text = text, Time = DateTime.Now.ToString("dd-MM-yyyy hh:mm") };
+            _messages.Add(message);
+            Clients.Group(userIdTo.ToString()).sendMessage(message);
         }
 
-        public void SendMessageToAll(string name, string message)
+        public void GetUserMessages()
         {
-            Clients.All.broadcastMessage(name, message);
-
-            //comment
+            var user = _users.FirstOrDefault(u => u.ConnectionId == Context.ConnectionId);
+            Clients.Caller().getUserMessages(_messages.Where(m => m.UserIdFrom == user.Id || m.UserIdTo == user.Id).ToList());
         }
     }
 }

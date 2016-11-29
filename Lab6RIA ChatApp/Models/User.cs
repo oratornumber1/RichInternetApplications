@@ -9,5 +9,6 @@ namespace Lab6RIA_ChatApp.Models
     {
         public int Id { get; set; }
         public string Name { get; set; }
+        public string ConnectionId { get; set; }
     }
 }
