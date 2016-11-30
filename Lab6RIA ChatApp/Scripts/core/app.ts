@@ -1,8 +1,4 @@
-﻿interface funct {
-    (): void;
-}
-
-class User {
+﻿class User {
     id: number;
     name: string;
     
@@ -25,23 +21,51 @@ class Message{
     }
 }
 
+
+class SignalRService {
+    private connection: SignalR.Hub.Connection;
+    private proxy: SignalR.Hub.Proxy;
+    private callbackGetAllUsers;
+    private callbackGetUserMessages;
+
+    constructor() {
+        this.connection = $.hubConnection();
+        this.proxy = this.connection.createHubProxy('chatHub');
+
+        this.proxy.on('getAllUsers', (users: Array<User>) => {
+            this.callbackGetAllUsers(users);
+        });
+
+        this.proxy.on('getUserMessages', (messages: Array<Message>) => {
+            this.callbackGetUserMessages(messages);
+        });
+
+        this.connection.start();
+    }
+}
+
+
 class ChatService {
     usersCounter: number;
     users: Array<User>;
     messages: Array<Message>;
     chatHub: any;
-    funcs: funct[];
+    callback;
 
     constructor() {
         this.users = new Array<User>();
         this.messages = new Array<Message>();
         this.chatHub = $.connection.chatHub;
+        this.callback();
 
         let self = this;
 
-
-
-        this.chatHub.client.getAllUsers = ;
+        this.chatHub.client.getAllUsers = function (users: Array<User>) {
+            for (let user of users) {
+                self.users.push(new User(user['Id'], user['Name']));
+            }
+            //console.log(self.users);
+        };
 
         this.chatHub.client.getUserMessages = function (messages: Array<Message>) {
             for (let message of messages)

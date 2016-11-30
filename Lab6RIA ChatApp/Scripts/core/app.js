@@ -14,11 +14,27 @@ var Message = (function () {
     }
     return Message;
 }());
+var SignalRService = (function () {
+    function SignalRService() {
+        var _this = this;
+        this.connection = $.hubConnection();
+        this.proxy = this.connection.createHubProxy('chatHub');
+        this.proxy.on('getAllUsers', function (users) {
+            _this.callbackGetAllUsers(users);
+        });
+        this.proxy.on('getUserMessages', function (messages) {
+            _this.callbackGetUserMessages(messages);
+        });
+        this.connection.start();
+    }
+    return SignalRService;
+}());
 var ChatService = (function () {
     function ChatService() {
         this.users = new Array();
         this.messages = new Array();
         this.chatHub = $.connection.chatHub;
+        this.callback();
         var self = this;
         this.chatHub.client.getAllUsers = function (users) {
             for (var _i = 0, users_1 = users; _i < users_1.length; _i++) {
@@ -38,6 +54,9 @@ var ChatService = (function () {
             self.chatHub.server.getAllUsers();
         });
     }
+    ChatService.prototype.subscribe = function (act) {
+        this.funcs.push(act);
+    };
     ChatService.prototype.getAllUsers = function () {
         return this.users;
     };
@@ -124,4 +143,3 @@ chatApp.component('dialog', {
     templateUrl: '../../DialogTemplate.html',
     controllerAs: 'ctrlDialog'
 });
-//# sourceMappingURL=app.js.map
