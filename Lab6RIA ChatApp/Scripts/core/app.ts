@@ -1,4 +1,7 @@
-﻿
+﻿interface funct {
+    (): void;
+}
+
 class User {
     id: number;
     name: string;
@@ -27,6 +30,7 @@ class ChatService {
     users: Array<User>;
     messages: Array<Message>;
     chatHub: any;
+    funcs: funct[];
 
     constructor() {
         this.users = new Array<User>();
@@ -34,13 +38,10 @@ class ChatService {
         this.chatHub = $.connection.chatHub;
 
         let self = this;
-        this.chatHub.client.getAllUsers = function (users: Array<User>) {
-            for (let user of users)
-            {
-                self.users.push(new User(user['Id'], user['Name']));
-            }
-            //console.log(self.users);
-        };
+
+
+
+        this.chatHub.client.getAllUsers = ;
 
         this.chatHub.client.getUserMessages = function (messages: Array<Message>) {
             for (let message of messages)
@@ -55,6 +56,10 @@ class ChatService {
             self.chatHub.server.getAllUsers();
         });      
      
+    }
+
+    public subscribe(act: funct): void {
+        this.funcs.push(act);
     }
 
     public getAllUsers(): Array<User> {

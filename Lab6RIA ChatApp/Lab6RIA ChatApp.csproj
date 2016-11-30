@@ -150,6 +150,7 @@
     <Content Include="Scripts\jquery.signalR-2.2.1.js" />
     <Content Include="Scripts\jquery.signalR-2.2.1.min.js" />
     <Content Include="Scripts\modernizr-2.8.3.js" />
+    <Content Include="Untitled.png" />
     <Content Include="Web.config" />
   </ItemGroup>
   <ItemGroup>

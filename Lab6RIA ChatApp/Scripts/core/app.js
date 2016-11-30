@@ -124,3 +124,4 @@ chatApp.component('dialog', {
     templateUrl: '../../DialogTemplate.html',
     controllerAs: 'ctrlDialog'
 });
+//# sourceMappingURL=app.js.map
