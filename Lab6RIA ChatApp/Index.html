@@ -21,8 +21,27 @@
             </div>
         </div>
 
-        <dialog user-id-from="usersctrl.userIdFrom" user-id-to="usersctrl.userIdTo">
-        </dialog>
+        <div class="col-md-8 text-center">
+            <h2>Диалог</h2>
+            <div style="text-align: left; height:250px; overflow-y: scroll; background-color: #4FC1E9;">
+                <div ng-repeat="message in usersctrl.messages">
+                    <p style="padding: 10px;">{{message.userIdFrom}} [{{message.time}}] : {{message.text}}</p>
+                </div>                
+            </div>
+            <div class="row" style="margin-top:20px;">
+                <div class="col-md-10">
+                    <textarea class="form-control" ng-model="messageText" ></textarea>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-default" ng-click="usersctrl.sendMessage(messageText)">
+                        Отправить
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!--<dialog useridfrom="usersctrl.userIdFrom" useridto="usersctrl.userIdTo">
+        </dialog>-->
 
     </div>
 

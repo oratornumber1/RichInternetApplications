@@ -14,8 +14,10 @@ namespace Lab6RIA_ChatApp
         
         public void JoinRoom(int id, string name)
         {
-            _users.Add(new User { Id = id, Name = name, ConnectionId = Context.ConnectionId });
+            var newUser = new User { Id = id, Name = name, ConnectionId = Context.ConnectionId };
+            _users.Add(newUser);
             Groups.Add(Context.ConnectionId, id.ToString());
+            Clients.All.addNewUser(newUser);
         }
 
         public void LeaveRoom(int id)
@@ -34,6 +36,7 @@ namespace Lab6RIA_ChatApp
             var message = new Message { UserIdFrom = userIdFrom, UserIdTo = userIdTo, Text = text, Time = DateTime.Now.ToString("dd-MM-yyyy hh:mm") };
             _messages.Add(message);
             Clients.Group(userIdTo.ToString()).sendMessage(message);
+            Clients.Caller.sendMessage(message);
         }
 
         public void GetUserMessages(int userIdFrom, int userIdTo)

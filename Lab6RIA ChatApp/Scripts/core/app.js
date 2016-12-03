@@ -25,121 +25,114 @@ var SignalRService = (function () {
         this.proxy.on('getUserMessages', function (messages) {
             _this.callbackGetUserMessages(messages);
         });
-        this.connection.start();
+        this.proxy.on('sendMessage', function (message) {
+            _this.callbackGetNewMessage(message);
+        });
+        this.proxy.on('addNewUser', function (user) {
+            _this.callbackReceiveNewUser(user);
+        });
+        this.connection.start().done(function () {
+            _this.proxy.invoke('getAllUsers');
+            _this.proxy.invoke('getUserMessages', 0, 0);
+        });
     }
+    SignalRService.prototype.GetAllUsers = function () {
+        this.proxy.invoke('getAllUsers');
+    };
+    SignalRService.prototype.AddUser = function (user) {
+        this.proxy.invoke('joinRoom', user.id, user.name);
+    };
+    SignalRService.prototype.GetAllMessages = function (userIdFrom, userIdTo) {
+        this.proxy.invoke('getUserMessages', userIdFrom, userIdTo);
+    };
+    SignalRService.prototype.SendMessage = function (userIdFrom, userIdTo, text) {
+        this.proxy.invoke('sendMessage', userIdFrom, userIdTo, text);
+    };
     return SignalRService;
 }());
-var ChatService = (function () {
-    function ChatService() {
-        this.users = new Array();
-        this.messages = new Array();
-        this.chatHub = $.connection.chatHub;
-        this.callback();
-        var self = this;
-        this.chatHub.client.getAllUsers = function (users) {
-            for (var _i = 0, users_1 = users; _i < users_1.length; _i++) {
-                var user = users_1[_i];
-                self.users.push(new User(user['Id'], user['Name']));
-            }
-            //console.log(self.users);
-        };
-        this.chatHub.client.getUserMessages = function (messages) {
-            for (var _i = 0, messages_1 = messages; _i < messages_1.length; _i++) {
-                var message = messages_1[_i];
-                self.messages.push(new Message(message['UserIdFrom'], message['UserIdTo'], message['Text'], message['Time']));
-            }
-        };
-        //$.connection.hub.start();
-        $.connection.hub.start().done(function () {
-            self.chatHub.server.getAllUsers();
-        });
-    }
-    ChatService.prototype.subscribe = function (act) {
-        this.funcs.push(act);
-    };
-    ChatService.prototype.getAllUsers = function () {
-        return this.users;
-    };
-    ChatService.prototype.addNewUser = function (name) {
-        //console.log(name);
-        var usersCounter = Math.floor(Math.random() * 6) + 1;
-        this.users.push(new User(usersCounter, name));
-        this.chatHub.server.joinRoom(usersCounter, name);
-        return usersCounter;
-    };
-    ChatService.prototype.getUserById = function (id) {
-        for (var _i = 0, _a = this.users; _i < _a.length; _i++) {
-            var user = _a[_i];
-            if (user.id == id) {
-                return user;
-            }
-        }
-    };
-    ChatService.prototype.getUserMessages = function (userIdFrom, userIdTo) {
-        var self = this;
-        $.connection.hub.start().done(function () {
-            self.chatHub.server.getUserMessages(userIdFrom, userIdTo);
-        });
-        return this.messages;
-    };
-    ChatService.prototype.sendMessage = function (userIdFrom, userIdTo, text) {
-        this.messages.push(new Message(userIdFrom, userIdTo, text, ""));
-        this.chatHub.server.sendMessage(userIdFrom, userIdTo, text);
-    };
-    return ChatService;
-}());
 var UsersController = (function () {
-    function UsersController(myChatService, $scope) {
-        this.myChatService = myChatService;
+    function UsersController(SignalRService, $scope) {
+        var _this = this;
+        this.SignalRService = SignalRService;
         this.$scope = $scope;
-        this.users = this.myChatService.getAllUsers();
+        this.callback = function (users) {
+            _this.users = [];
+            users.forEach(function (u) {
+                _this.users.push(new User(u['Id'], u['Name']));
+            });
+            _this.$scope.$apply();
+        };
+        this.callbackAllMessages = function (messages) {
+            _this.messages = [];
+            messages.forEach(function (m) {
+                _this.messages.push(new Message(m['UserIdFrom'], m['UserIdTo'], m['Text'], m['Time']));
+            });
+            _this.$scope.$apply();
+        };
+        this.callbackReceiveMessage = function (message) {
+            _this.messages.push(new Message(message['UserIdFrom'], message['UserIdTo'], message['Text'], message['Time']));
+            _this.$scope.$apply();
+        };
+        this.callbackReceiveNewUser = function (user) {
+            _this.users.push(new User(user['Id'], user['Name']));
+            _this.$scope.$apply();
+        };
+        this.SignalRService.callbackGetAllUsers = this.callback;
+        this.SignalRService.callbackGetUserMessages = this.callbackAllMessages;
+        this.SignalRService.callbackGetNewMessage = this.callbackReceiveMessage;
+        this.SignalRService.callbackReceiveNewUser = this.callbackReceiveNewUser;
+        //this.SignalRService.GetAllUsers();
         this.showInput = true;
         this.userIdFrom = 0;
         this.userIdTo = 0;
-        //this.$scope.$apply();
     }
     UsersController.prototype.addUser = function (name) {
-        this.userIdFrom = this.myChatService.addNewUser(name);
-        this.users = this.myChatService.getAllUsers();
+        var usersCounter = Math.floor(Math.random() * 6) + 1;
+        this.userIdFrom = usersCounter;
+        var newUser = new User(usersCounter, name);
+        //this.users.push(newUser);
+        this.SignalRService.AddUser(newUser);
         this.showInput = false;
         //this.$scope.$apply();
     };
     UsersController.prototype.setUserIdTo = function (id) {
         this.userIdTo = id;
+        this.messages = [];
+        this.SignalRService.GetAllMessages(this.userIdFrom, this.userIdTo);
+    };
+    UsersController.prototype.sendMessage = function (text) {
+        this.SignalRService.SendMessage(this.userIdFrom, this.userIdTo, text);
     };
     return UsersController;
 }());
-UsersController.$inject = ['ChatService', '$scope'];
+UsersController.$inject = ['SignalRService', '$scope'];
 var DialogController = (function () {
-    function DialogController(myChatService, $scope) {
-        this.myChatService = myChatService;
+    function DialogController(SignalRService, $scope) {
+        this.SignalRService = SignalRService;
         this.$scope = $scope;
         this.messages = new Array();
     }
     DialogController.prototype.$onChanges = function (obj) {
-        console.log(obj.userIdFrom);
-        console.log(obj.userIdTo);
-        this.userIdFrom = obj.userIdFrom.currentValue;
-        this.userIdTo = obj.userIdTo.currentValue;
-        this.messages = this.myChatService.getUserMessages(this.userIdFrom, this.userIdTo);
-    };
-    DialogController.prototype.sendMessage = function (text) {
-        this.myChatService.sendMessage(this.userIdFrom, this.userIdTo, text);
-        this.messages = this.myChatService.getUserMessages(this.userIdFrom, this.userIdTo);
+        console.log(obj.useridfrom.currentValue);
+        console.log(obj.useridto.currentValue);
+        //this.userIdFrom = obj.userIdFrom.currentValue;
+        //this.userIdTo = obj.userIdTo.currentValue;
+        //this.messages = this.myChatService.getUserMessages(this.userIdFrom, this.userIdTo);
     };
     return DialogController;
 }());
-DialogController.$inject = ['ChatService', '$scope'];
+DialogController.$inject = ['SignalRService', '$scope'];
 var chatApp = angular.module('chatApp', []);
-chatApp.service("ChatService", ChatService);
 chatApp.controller("UsersController", UsersController);
+chatApp.service("SignalRService", SignalRService);
 chatApp.controller("DialogController", DialogController);
 chatApp.component('dialog', {
     bindings: {
-        userIdFrom: '<',
-        userIdTo: '<'
+        useridfrom: '<',
+        useridto: '<'
     },
     controller: DialogController,
-    templateUrl: '../../DialogTemplate.html',
+    templateUrl: '../../../DialogTemplate.html',
     controllerAs: 'ctrlDialog'
 });
+//# sourceMappingURL=app.js.map

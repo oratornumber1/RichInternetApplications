@@ -1,14 +1,14 @@
 ﻿class User {
     id: number;
     name: string;
-    
+
     constructor(id: number, name: string) {
         this.name = name;
         this.id = id;
     }
 }
 
-class Message{
+class Message {
     userIdFrom: number;
     userIdTo: number;
     text: string;
@@ -24,9 +24,11 @@ class Message{
 
 class SignalRService {
     private connection: SignalR.Hub.Connection;
-    private proxy: SignalR.Hub.Proxy;
-    private callbackGetAllUsers;
-    private callbackGetUserMessages;
+    public proxy: SignalR.Hub.Proxy;
+    public callbackGetAllUsers;
+    public callbackReceiveNewUser;
+    public callbackGetUserMessages;
+    public callbackGetNewMessage;
 
     constructor() {
         this.connection = $.hubConnection();
@@ -40,152 +42,146 @@ class SignalRService {
             this.callbackGetUserMessages(messages);
         });
 
-        this.connection.start();
+        this.proxy.on('sendMessage', (message: Message) => {
+            this.callbackGetNewMessage(message);
+        });
+
+        this.proxy.on('addNewUser', (user: User) => {
+            this.callbackReceiveNewUser(user);
+        });
+
+        this.connection.start().done(() => {
+            this.proxy.invoke('getAllUsers');
+            this.proxy.invoke('getUserMessages', 0, 0)
+        });
+    }
+
+    public GetAllUsers() {
+        this.proxy.invoke('getAllUsers');
+    }
+
+    public AddUser(user: User) {
+        this.proxy.invoke('joinRoom', user.id, user.name);
+    }
+
+    public GetAllMessages(userIdFrom:number, userIdTo:number) {
+        this.proxy.invoke('getUserMessages', userIdFrom, userIdTo);
+    }
+
+    public SendMessage(userIdFrom: number, userIdTo: number, text: string) {
+        this.proxy.invoke('sendMessage', userIdFrom, userIdTo, text);
     }
 }
 
 
-class ChatService {
-    usersCounter: number;
-    users: Array<User>;
-    messages: Array<Message>;
-    chatHub: any;
-    callback;
 
-    constructor() {
-        this.users = new Array<User>();
-        this.messages = new Array<Message>();
-        this.chatHub = $.connection.chatHub;
-        this.callback();
-
-        let self = this;
-
-        this.chatHub.client.getAllUsers = function (users: Array<User>) {
-            for (let user of users) {
-                self.users.push(new User(user['Id'], user['Name']));
-            }
-            //console.log(self.users);
-        };
-
-        this.chatHub.client.getUserMessages = function (messages: Array<Message>) {
-            for (let message of messages)
-            {
-                self.messages.push(new Message(message['UserIdFrom'],message['UserIdTo'], message['Text'], message['Time']));
-            }
-        };
-
-        
-        //$.connection.hub.start();
-        $.connection.hub.start().done(function () {
-            self.chatHub.server.getAllUsers();
-        });      
-     
-    }
-
-    public subscribe(act: funct): void {
-        this.funcs.push(act);
-    }
-
-    public getAllUsers(): Array<User> {
-        return this.users;
-    }
-
-    public addNewUser(name: string): number {
-        //console.log(name);
-        let usersCounter = Math.floor(Math.random() * 6) + 1;
-        this.users.push(new User(usersCounter,name));
-        this.chatHub.server.joinRoom(usersCounter,name);
-        return usersCounter;
-    }
-
-    public getUserById(id: number): User {
-        for (let user of this.users) {
-            if (user.id == id) {
-                return user;
-            }
-        }
-    }
-
-    public getUserMessages(userIdFrom: number, userIdTo: number): Array<Message> {
-        let self = this;
-        $.connection.hub.start().done(function () {
-            self.chatHub.server.getUserMessages(userIdFrom, userIdTo);
-        }); 
-        
-        return this.messages;
-    }
-
-    public sendMessage(userIdFrom: number, userIdTo: number, text: string) {
-        this.messages.push(new Message(userIdFrom, userIdTo, text, ""));
-        this.chatHub.server.sendMessage(userIdFrom, userIdTo, text);
-    }
-
-}
 
 class UsersController {
     users: Array<User>;
+    messages: Array<Message>;
+
+    callback: (users: Array<User>) => void  = (users) => {
+        this.users = [];
+        users.forEach(u => {
+            this.users.push(new User(u['Id'], u['Name']));
+        });
+        this.$scope.$apply();
+    };
+    callbackAllMessages: (messages: Array<Message>) => void = (messages) => {
+        this.messages = [];
+        messages.forEach(m => {
+            this.messages.push(new Message(m['UserIdFrom'], m['UserIdTo'], m['Text'], m['Time']));
+        });
+        this.$scope.$apply();
+    };
+    callbackReceiveMessage: (message: Message) => void = (message) => {
+        this.messages.push(new Message(message['UserIdFrom'], message['UserIdTo'], message['Text'], message['Time']));
+        this.$scope.$apply();
+    };
+    callbackReceiveNewUser: (user: User) => void = (user) => {
+        this.users.push(new User(user['Id'], user['Name']));
+        this.$scope.$apply();
+    };
+
+
     userIdTo: number;
     userIdFrom: number;
     showInput: boolean;
 
-    constructor(private myChatService: ChatService, private $scope: ng.IScope) {
-        this.users = this.myChatService.getAllUsers();
+    constructor(private SignalRService, private $scope: ng.IScope) {
+        this.SignalRService.callbackGetAllUsers = this.callback;
+        this.SignalRService.callbackGetUserMessages = this.callbackAllMessages;
+        this.SignalRService.callbackGetNewMessage = this.callbackReceiveMessage;
+        this.SignalRService.callbackReceiveNewUser = this.callbackReceiveNewUser;
+        //this.SignalRService.GetAllUsers();
+
         this.showInput = true;
         this.userIdFrom = 0;
         this.userIdTo = 0;
-        //this.$scope.$apply();
+
     }
 
     addUser(name: string) {
-        this.userIdFrom = this.myChatService.addNewUser(name);
-        this.users = this.myChatService.getAllUsers();
+        let usersCounter = Math.floor(Math.random() * 6) + 1;
+        this.userIdFrom = usersCounter;
+        var newUser = new User(usersCounter, name);
+        //this.users.push(newUser);
+        this.SignalRService.AddUser(newUser);
         this.showInput = false;
+        
         //this.$scope.$apply();
     }
 
     setUserIdTo(id: number) {
         this.userIdTo = id;
+        this.messages = [];
+        this.SignalRService.GetAllMessages(this.userIdFrom, this.userIdTo);
+    }
+
+    sendMessage(text: string) {
+        this.SignalRService.SendMessage(this.userIdFrom, this.userIdTo, text);
     }
 }
-UsersController.$inject = ['ChatService', '$scope'];
+UsersController.$inject = ['SignalRService', '$scope'];
 
 class DialogController {
     messages: Array<Message>;
     userIdTo: number;
     userIdFrom: number;
 
-    constructor(private myChatService: ChatService, private $scope: ng.IScope) {
+    constructor(private SignalRService, private $scope: ng.IScope) {
         this.messages = new Array<Message>();
     }
 
     $onChanges(obj: any) {
-        console.log(obj.userIdFrom);
-        console.log(obj.userIdTo);
-        this.userIdFrom = obj.userIdFrom.currentValue;
-        this.userIdTo = obj.userIdTo.currentValue;
-        this.messages = this.myChatService.getUserMessages(this.userIdFrom, this.userIdTo);
+        console.log(obj.useridfrom.currentValue);
+        console.log(obj.useridto.currentValue);
+        //this.userIdFrom = obj.userIdFrom.currentValue;
+        //this.userIdTo = obj.userIdTo.currentValue;
+        //this.messages = this.myChatService.getUserMessages(this.userIdFrom, this.userIdTo);
     }
 
-    sendMessage(text: string)
-    {
-        this.myChatService.sendMessage(this.userIdFrom, this.userIdTo, text);
-        this.messages = this.myChatService.getUserMessages(this.userIdFrom, this.userIdTo);
-    }
+    //sendMessage(text: string) {
+    //    this.myChatService.sendMessage(this.userIdFrom, this.userIdTo, text);
+    //    this.messages = this.myChatService.getUserMessages(this.userIdFrom, this.userIdTo);
+    //}
 }
-DialogController.$inject = ['ChatService', '$scope'];
+DialogController.$inject = ['SignalRService', '$scope'];
+
 
 var chatApp = angular.module('chatApp', []);
-chatApp.service("ChatService", ChatService);
 chatApp.controller("UsersController", UsersController);
+chatApp.service("SignalRService", SignalRService);
 chatApp.controller("DialogController", DialogController);
+
+
 
 chatApp.component('dialog', {
     bindings: {
-        userIdFrom: '<',
-        userIdTo: '<'
+        useridfrom: '<',
+        useridto: '<'
     },
     controller: DialogController,
-    templateUrl: '../../DialogTemplate.html',
+    templateUrl: '../../../DialogTemplate.html',
     controllerAs: 'ctrlDialog'
-
 });
